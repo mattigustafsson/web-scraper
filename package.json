@@ -1,9 +1,10 @@
 {
   "name": "web-scraper",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "axios-mock-adapter": "^1.22.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
