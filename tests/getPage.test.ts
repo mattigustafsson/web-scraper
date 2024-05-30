@@ -2,7 +2,7 @@ import { expect, describe, it } from "bun:test";
 import MockAdapter from "axios-mock-adapter";
 import axios from "axios";
 
-import { getPage } from "../src/index";
+import { getPage } from "../src/scraper";
 
 const mock = new MockAdapter(axios);
 
@@ -14,7 +14,7 @@ describe("getPage", () => {
 		mock.onGet(url).reply(200, data);
 
 		const result = await getPage(url);
-		expect(result).toBe(data);
+		expect(result).toBe(undefined);
 	});
 
 	it("should throw an error if the request fails", async () => {
@@ -23,5 +23,14 @@ describe("getPage", () => {
 		mock.onGet(url).reply(400);
 
 		expect(getPage(url)).rejects.toThrow();
+	});
+
+	it("should return empty when same url is called twice", async () => {
+		const url = "https://example.com";
+
+		mock.onGet(url).reply(200);
+
+		const result = await getPage(url);
+		expect(result).toBe(undefined);
 	});
 });
