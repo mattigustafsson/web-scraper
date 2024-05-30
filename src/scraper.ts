@@ -1,10 +1,27 @@
+import { mkdir, writeFile, exists, rm } from "node:fs/promises";
+import path from "node:path";
 import axios, { Axios, AxiosError } from "axios";
-import { parse, type HTMLElement } from "node-html-parser";
+import { type HTMLElement, parse } from "node-html-parser";
+
+const BATCHING_REQUESTS = 20;
 
 const baseUrl = "https://books.toscrape.com/";
 let urlsToVisit: string[] = [];
-const tempUrls = new Set<string>();
 const visitedUrls = new Set<string>();
+
+async function savePageContent(url: string, content: string): Promise<void> {
+	const parsedUrl = new URL(url);
+	const filePath = path.join("scraped_site", parsedUrl.pathname);
+	console.log(filePath);
+	console.log(path.dirname(filePath));
+	await mkdir(filePath, {
+		recursive: true,
+	});
+	await writeFile(
+		filePath.endsWith("/") ? path.join(filePath, "index.html") : filePath,
+		content,
+	);
+}
 
 export async function getPage(url: string): Promise<void> {
 	if (visitedUrls.has(url)) return;
@@ -19,11 +36,12 @@ export async function getPage(url: string): Promise<void> {
 	const html = parse(response.data);
 	const links = extractURLs(html);
 
+	await savePageContent(url, response.data);
+
 	for (const link of links) {
 		const newLink = new URL(link, url).toString();
 
 		if (!visitedUrls.has(newLink)) {
-			tempUrls.add(newLink);
 			urlsToVisit.push(newLink);
 		}
 	}
@@ -45,12 +63,17 @@ function extractURLs(html: HTMLElement): string[] {
 }
 
 export async function scraper() {
+	if (await exists("scraped_site")) {
+		await rm("scraped_site", {
+			recursive: true,
+		});
+	}
 	const startTime = performance.now();
 	urlsToVisit.push(baseUrl);
 
 	while (urlsToVisit.length > 0) {
 		urlsToVisit = [...new Set(urlsToVisit)];
-		const batch = urlsToVisit.splice(0, 20);
+		const batch = urlsToVisit.splice(0, BATCHING_REQUESTS);
 
 		await Promise.all(
 			batch.map(async (link) => {
@@ -61,6 +84,7 @@ export async function scraper() {
 				});
 			}),
 		);
+		console.log(`Seached ${visitedUrls.size} of ${urlsToVisit.length}`);
 	}
 	const endTime = performance.now();
 	console.log(`It  took ${endTime - startTime} milliseconds`);
