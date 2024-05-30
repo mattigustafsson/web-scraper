@@ -11,10 +11,15 @@ const visitedUrls = new Set<string>();
 
 async function savePageContent(url: string, content: string): Promise<void> {
 	const parsedUrl = new URL(url);
-	const filePath = path.join("scraped_site", parsedUrl.pathname);
-	console.log(filePath);
-	console.log(path.dirname(filePath));
-	await mkdir(filePath, {
+	let filePath = path.join("scraped_site", parsedUrl.pathname);
+
+	if (parsedUrl.pathname === "/") {
+		filePath = path.join("scraped_site", "index.html");
+	} else if (filePath.endsWith("/")) {
+		filePath = path.join(filePath, "index.html");
+	}
+
+	await mkdir(path.dirname(filePath), {
 		recursive: true,
 	});
 	await writeFile(
