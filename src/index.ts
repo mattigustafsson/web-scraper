@@ -1,25 +1,30 @@
-import axios from 'axios'
-import { parse } from 'node-html-parser'
+import axios from "axios";
+import { parse } from "node-html-parser";
 
-const baseUrl = 'https://books.toscrape.com/'
-const urlsToVisit = []
-const visitedUrls = new Set()
+const baseUrl = "https://books.toscrape.com/";
+const urlsToVisit = [];
+const visitedUrls = new Set();
 
-export const getPage = async (url: string) => {
-  const response = await axios.get(url).catch(error => {
-    console.log(error.toJSON().message)
-    throw new Error(error.toJSON().message)
-  })
+export async function getPage(url: string) {
+	const response = await axios.get(url).catch((error) => {
+		throw new Error(error.toJSON().message);
+	});
 
-  return response.data
+	return response.data;
 }
 
-const html = parse(await getPage(baseUrl))
+async function main() {
+	  const html = parse(await getPage(baseUrl));
 
-const tags = html.querySelectorAll('a')
+	const tags = html.querySelectorAll("a");
 
-const url = tags.map(data => {
-  return data.getAttribute('href')
-}).filter(href => href)
+	const url = tags
+		.map((data) => {
+			return data.getAttribute("href");
+		})
+		.filter((href) => href);
 
-console.log(url)
+	console.log(url);
+}
+
+main().catch(console.error);

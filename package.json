@@ -3,6 +3,7 @@
   "module": "src/index.ts",
   "type": "module",
   "devDependencies": {
+    "@biomejs/biome": "1.7.3",
     "@types/bun": "latest",
     "axios-mock-adapter": "^1.22.0"
   },
@@ -12,5 +13,8 @@
   "dependencies": {
     "axios": "^1.7.2",
     "node-html-parser": "^6.1.13"
+  },
+  "scripts": {
+    "lint": "bunx biome check --apply ./src"
   }
 }
