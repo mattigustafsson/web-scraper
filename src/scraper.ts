@@ -28,86 +28,63 @@ async function savePageContent(url: string, content: string): Promise<void> {
 	);
 }
 
-async function downloadResource(
-	url: string,
-	outputPath: string,
-): Promise<void> {
-	const response = await axios.get(url, { responseType: "arraybuffer" });
-	visitedUrls.add(url);
-	const buffer = Buffer.from(response.data);
-	await mkdir(path.dirname(outputPath), { recursive: true });
-	await writeFile(outputPath, buffer);
+async function saveResource(url: string, outputPath: string): Promise<void> {}
+
+function extractURLs(html: HTMLElement): string[] {
+	const urls = [];
+	urls.push(
+		...html.querySelectorAll("a").map((data) => {
+			return data.getAttribute("href");
+		}),
+	);
+	urls.push(
+		...html
+			.querySelectorAll('link[rel="stylesheet"]')
+			.map((link) => link.getAttribute("href")),
+	);
+	urls.push(
+		...html
+			.querySelectorAll("script")
+			.map((script) => script.getAttribute("src")),
+	);
+	urls.push(
+		...html.querySelectorAll("img").map((img) => img.getAttribute("src")),
+	);
+
+	return urls.filter(Boolean) as string[];
 }
 
 export async function getPage(url: string): Promise<void> {
+	// Retrurn if url is already visited.
 	if (visitedUrls.has(url)) return;
-
-	//console.log(url);
 
 	const response = await axios.get(url).catch((error) => {
 		return Promise.reject(error);
 	});
 	visitedUrls.add(url);
 
-	const html = parse(response.data);
-	const links = extractURLs(html);
-	const resources = extractResources(html);
+	const contentType = response.headers["content-type"];
+	if (contentType.startsWith("text/html")) {
+		const html = parse(response.data);
+		const links = extractURLs(html);
 
-	await savePageContent(url, response.data);
+		await savePageContent(url, response.data);
 
-	for (const link of links) {
-		const newLink = new URL(link, url).toString();
+		for (const link of links) {
+			const newLink = new URL(link, url).toString();
 
-		if (!visitedUrls.has(newLink)) {
-			urlsToVisit.push(newLink);
+			if (!visitedUrls.has(newLink)) {
+				urlsToVisit.push(newLink);
+			}
 		}
-	}
-
-	for (const resource of resources) {
-		const resolvedResourceLink = new URL(resource, url).toString();
-		const resourcePath = path.join(
-			"scraped_site",
-			new URL(resolvedResourceLink).pathname,
-		);
-		if (!visitedUrls.has(resolvedResourceLink)) {
-			await downloadResource(resolvedResourceLink, resourcePath);
-		}
-	}
-}
-
-function extractURLs(html: HTMLElement): string[] {
-	let urls: string[] = [];
-	const tags = html.querySelectorAll("a");
-
-	urls = tags
-		// map over the tags to get the link
-		.map((data) => {
-			return data.getAttribute("href");
-		})
-		// filter out the tags that don't have a link
-		.filter((href): href is string => {
-			return !!href;
+	} else {
+		const resourcePath = path.join("scraped_site", new URL(url).pathname);
+		const buffer = Buffer.from(response.data);
+		await mkdir(path.dirname(resourcePath), {
+			recursive: true,
 		});
-
-	return urls;
-}
-
-function extractResources(html: HTMLElement): string[] {
-	const resources = [];
-	resources.push(
-		...html
-			.querySelectorAll('link[rel="stylesheet"]')
-			.map((link) => link.getAttribute("href")),
-	);
-	resources.push(
-		...html
-			.querySelectorAll("script")
-			.map((script) => script.getAttribute("src")),
-	);
-	resources.push(
-		...html.querySelectorAll("img").map((img) => img.getAttribute("src")),
-	);
-	return resources.filter(Boolean) as string[];
+		await writeFile(resourcePath, buffer);
+	}
 }
 
 export async function scraper() {
