@@ -28,10 +28,21 @@ async function savePageContent(url: string, content: string): Promise<void> {
 	);
 }
 
+async function downloadResource(
+	url: string,
+	outputPath: string,
+): Promise<void> {
+	const response = await axios.get(url, { responseType: "arraybuffer" });
+	visitedUrls.add(url);
+	const buffer = Buffer.from(response.data);
+	await mkdir(path.dirname(outputPath), { recursive: true });
+	await writeFile(outputPath, buffer);
+}
+
 export async function getPage(url: string): Promise<void> {
 	if (visitedUrls.has(url)) return;
 
-	console.log(url);
+	//console.log(url);
 
 	const response = await axios.get(url).catch((error) => {
 		return Promise.reject(error);
@@ -40,6 +51,7 @@ export async function getPage(url: string): Promise<void> {
 
 	const html = parse(response.data);
 	const links = extractURLs(html);
+	const resources = extractResources(html);
 
 	await savePageContent(url, response.data);
 
@@ -50,6 +62,17 @@ export async function getPage(url: string): Promise<void> {
 			urlsToVisit.push(newLink);
 		}
 	}
+
+	for (const resource of resources) {
+		const resolvedResourceLink = new URL(resource, url).toString();
+		const resourcePath = path.join(
+			"scraped_site",
+			new URL(resolvedResourceLink).pathname,
+		);
+		if (!visitedUrls.has(resolvedResourceLink)) {
+			await downloadResource(resolvedResourceLink, resourcePath);
+		}
+	}
 }
 
 function extractURLs(html: HTMLElement): string[] {
@@ -57,9 +80,11 @@ function extractURLs(html: HTMLElement): string[] {
 	const tags = html.querySelectorAll("a");
 
 	urls = tags
+		// map over the tags to get the link
 		.map((data) => {
 			return data.getAttribute("href");
 		})
+		// filter out the tags that don't have a link
 		.filter((href): href is string => {
 			return !!href;
 		});
@@ -67,30 +92,56 @@ function extractURLs(html: HTMLElement): string[] {
 	return urls;
 }
 
+function extractResources(html: HTMLElement): string[] {
+	const resources = [];
+	resources.push(
+		...html
+			.querySelectorAll('link[rel="stylesheet"]')
+			.map((link) => link.getAttribute("href")),
+	);
+	resources.push(
+		...html
+			.querySelectorAll("script")
+			.map((script) => script.getAttribute("src")),
+	);
+	resources.push(
+		...html.querySelectorAll("img").map((img) => img.getAttribute("src")),
+	);
+	return resources.filter(Boolean) as string[];
+}
+
 export async function scraper() {
+	// Remove scraped_site folder if it exists
 	if (await exists("scraped_site")) {
 		await rm("scraped_site", {
 			recursive: true,
 		});
 	}
 	const startTime = performance.now();
+	// Add the base url to the list of urls to visit.
 	urlsToVisit.push(baseUrl);
 
 	while (urlsToVisit.length > 0) {
+		// Remove duplicates
 		urlsToVisit = [...new Set(urlsToVisit)];
+		// Batch requests
 		const batch = urlsToVisit.splice(0, BATCHING_REQUESTS);
 
 		await Promise.all(
+			// Execute batched requests in parallel.
 			batch.map(async (link) => {
 				await getPage(link).catch((error) => {
+					// Handle 404 errors, may not be nescessary any more.
+					// Got the errors when I was constructing the URLs wrong.
 					if (axios.isAxiosError(error) && error.response?.status === 404) {
 						console.error(`Error 404: Page not found - ${link}`);
 					}
 				});
 			}),
 		);
+		// Log progress
 		console.log(`Seached ${visitedUrls.size} of ${urlsToVisit.length}`);
 	}
 	const endTime = performance.now();
-	console.log(`It  took ${endTime - startTime} milliseconds`);
+	console.log(`It took ${endTime - startTime} milliseconds`);
 }

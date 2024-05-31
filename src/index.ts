@@ -1,7 +1,10 @@
 import { scraper } from "./scraper";
 
-async function run() {
+/**
+ * Executes the web scraper.
+ */
+export async function executeScraper(): Promise<void> {
 	await scraper();
 }
 
-run().catch(console.error);
+executeScraper().catch(console.error);
