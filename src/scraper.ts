@@ -1,9 +1,9 @@
-import { mkdir, writeFile, exists, rm } from "node:fs/promises";
+import { exists, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import axios, { Axios, AxiosError } from "axios";
+import axios from "axios";
 import { type HTMLElement, parse } from "node-html-parser";
 
-const BATCHING_REQUESTS = 20;
+const BATCHING_REQUESTS = 10;
 
 const baseUrl = "https://books.toscrape.com/";
 let urlsToVisit: string[] = [];
@@ -13,22 +13,13 @@ async function savePageContent(url: string, content: string): Promise<void> {
 	const parsedUrl = new URL(url);
 	let filePath = path.join("scraped_site", parsedUrl.pathname);
 
-	if (parsedUrl.pathname === "/") {
-		filePath = path.join("scraped_site", "index.html");
-	} else if (filePath.endsWith("/")) {
+	if (parsedUrl.pathname === "/" || filePath.endsWith("/")) {
 		filePath = path.join(filePath, "index.html");
 	}
 
-	await mkdir(path.dirname(filePath), {
-		recursive: true,
-	});
-	await writeFile(
-		filePath.endsWith("/") ? path.join(filePath, "index.html") : filePath,
-		content,
-	);
+	await mkdir(path.dirname(filePath), { recursive: true });
+	await writeFile(filePath, content);
 }
-
-async function saveResource(url: string, outputPath: string): Promise<void> {}
 
 function extractURLs(html: HTMLElement): string[] {
 	const urls = [];
@@ -58,9 +49,15 @@ export async function getPage(url: string): Promise<void> {
 	// Retrurn if url is already visited.
 	if (visitedUrls.has(url)) return;
 
-	const response = await axios.get(url).catch((error) => {
-		return Promise.reject(error);
-	});
+	const response = await axios
+		.get(url, {
+			responseType: url.includes("books.toscrape.com/media/")
+				? "arraybuffer"
+				: undefined,
+		})
+		.catch((error) => {
+			return Promise.reject(error);
+		});
 	visitedUrls.add(url);
 
 	const contentType = response.headers["content-type"];
@@ -79,11 +76,10 @@ export async function getPage(url: string): Promise<void> {
 		}
 	} else {
 		const resourcePath = path.join("scraped_site", new URL(url).pathname);
-		const buffer = Buffer.from(response.data);
 		await mkdir(path.dirname(resourcePath), {
 			recursive: true,
 		});
-		await writeFile(resourcePath, buffer);
+		await writeFile(resourcePath, response.data);
 	}
 }
 
@@ -117,7 +113,9 @@ export async function scraper() {
 			}),
 		);
 		// Log progress
-		console.log(`Seached ${visitedUrls.size} of ${urlsToVisit.length}`);
+		console.log(
+			`Seached: ${visitedUrls.size}\nRemaining: ${urlsToVisit.length}`,
+		);
 	}
 	const endTime = performance.now();
 	console.log(`It took ${endTime - startTime} milliseconds`);

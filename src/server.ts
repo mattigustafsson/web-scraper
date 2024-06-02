@@ -1,6 +1,6 @@
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const srcPath = join(__dirname, "../scraped_site");
 
