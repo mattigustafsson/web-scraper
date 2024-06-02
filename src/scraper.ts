@@ -1,49 +1,14 @@
 import { exists, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import axios from "axios";
-import { type HTMLElement, parse } from "node-html-parser";
+import { parse } from "node-html-parser";
+import { extractURLs, savePageContent } from "./helpers";
 
 const BATCHING_REQUESTS = 10;
 
 const baseUrl = "https://books.toscrape.com/";
 let urlsToVisit: string[] = [];
 const visitedUrls = new Set<string>();
-
-async function savePageContent(url: string, content: string): Promise<void> {
-	const parsedUrl = new URL(url);
-	let filePath = path.join("scraped_site", parsedUrl.pathname);
-
-	if (parsedUrl.pathname === "/" || filePath.endsWith("/")) {
-		filePath = path.join(filePath, "index.html");
-	}
-
-	await mkdir(path.dirname(filePath), { recursive: true });
-	await writeFile(filePath, content);
-}
-
-function extractURLs(html: HTMLElement): string[] {
-	const urls = [];
-	urls.push(
-		...html.querySelectorAll("a").map((data) => {
-			return data.getAttribute("href");
-		}),
-	);
-	urls.push(
-		...html
-			.querySelectorAll('link[rel="stylesheet"]')
-			.map((link) => link.getAttribute("href")),
-	);
-	urls.push(
-		...html
-			.querySelectorAll("script")
-			.map((script) => script.getAttribute("src")),
-	);
-	urls.push(
-		...html.querySelectorAll("img").map((img) => img.getAttribute("src")),
-	);
-
-	return urls.filter(Boolean) as string[];
-}
 
 export async function getPage(url: string): Promise<void> {
 	// Retrurn if url is already visited.
