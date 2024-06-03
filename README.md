@@ -17,8 +17,8 @@ This project is a web scraper that traverses all pages on `https://books.toscrap
 
 1. Clone the repository:
   ```sh
-  git clone <repository_url>
-  cd <repository_directory>
+  git clone https://github.com/mattigustafsson/web-scraper.git
+  cd web-scraper
   ```
   
 
@@ -38,3 +38,11 @@ This project is a web scraper that traverses all pages on `https://books.toscrap
   ```
 
 5. Open your browser and navigate to http://localhost:3000 to see the scraped site.
+
+## Tests
+
+  To run test:
+
+  ```sh
+  bun test
+  ```
