@@ -4,6 +4,7 @@
   "type": "module",
   "devDependencies": {
     "@biomejs/biome": "1.7.3",
+    "@happy-dom/global-registrator": "^14.12.0",
     "@types/bun": "latest",
     "axios-mock-adapter": "^1.22.0"
   },
@@ -15,7 +16,7 @@
     "node-html-parser": "^6.1.13"
   },
   "scripts": {
-    "lint": "bunx biome check --apply ./src",
+    "lint": "bunx biome check --apply ./src ./tests",
     "scrape": "bun run src/index.ts",
     "server": "bun run src/server.ts",
     "server --watch": "bun run --watch src/server.ts",
