@@ -17,8 +17,8 @@
   "scripts": {
     "lint": "bunx biome check --apply ./src",
     "scrape": "bun run src/index.ts",
-    "dev": "bun run src/server.ts",
-    "dev --watch": "bun run --watch src/server.ts",
+    "server": "bun run src/server.ts",
+    "server --watch": "bun run --watch src/server.ts",
     "delete": "rm -rf ./scraped_site"
   }
 }
